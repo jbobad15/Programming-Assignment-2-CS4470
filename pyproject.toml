@@ -1,0 +1,9 @@
+[project]
+name = "cs4470-distance-vector"
+version = "0.1.0"
+description = "Starter project for CS4470 Programming Assignment 2"
+requires-python = ">=3.10"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
