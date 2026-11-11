@@ -117,16 +117,19 @@ class DistanceVectorServer:
         self.output = output
         # Routing table: destination ID -> chosen next hop and total path cost.
         self.routes: dict[int, Route] = {
-            server_id: Route(None, 0 if server_id == local_id else INFINITY)
+            server_id: Route(local_id if server_id == local_id else None, 0 if server_id == local_id else INFINITY)
             for server_id in servers
         }
         self.neighbor_costs = dict(neighbor_costs)
+        self.disabled_neighbors = {sid for sid, cost in neighbor_costs.items()
+                                   if math.isinf(cost)}
         self.neighbor_vectors: dict[int, dict[int, float]] = {}
         self.last_received: dict[int, float] = {}
         self.packet_count = 0
         self.lock = threading.RLock()
         self.running = threading.Event()
         self.sock: socket.socket | None = None
+        self._recompute_routes()
 
     def log(self, message: str) -> None:
         with self.lock:
@@ -192,7 +195,8 @@ class DistanceVectorServer:
             changed = False
             for neighbor in list(self.neighbor_costs):
                 last = self.last_received.get(neighbor)
-                if last is not None and now - last >= 3 * self.interval:
+                if (math.isfinite(self.neighbor_costs[neighbor]) and last is not None
+                        and now - last >= 3 * self.interval):
                     self.neighbor_costs[neighbor] = INFINITY
                     self.neighbor_vectors.pop(neighbor, None)
                     del self.last_received[neighbor]
@@ -249,7 +253,17 @@ class DistanceVectorServer:
 
         with self.lock:
             if sender not in self.neighbor_costs:
-                raise ValueError("update came from a server that is not a configured neighbor")
+                # A newly added router announces the symmetric link cost to this router.
+                link_cost = vector.get(self.local_id, INFINITY)
+                if not math.isfinite(link_cost):
+                    raise ValueError("new server does not advertise a finite link to this server")
+                self.neighbor_costs[sender] = link_cost
+            elif (not math.isfinite(self.neighbor_costs[sender])
+                  and sender not in self.disabled_neighbors):
+                # A timed-out neighbor can rejoin; preserve administratively disabled links.
+                link_cost = vector.get(self.local_id, INFINITY)
+                if math.isfinite(link_cost):
+                    self.neighbor_costs[sender] = link_cost
             self.neighbor_vectors[sender] = vector
             self.last_received[sender] = time.monotonic()
             self.packet_count += 1
@@ -259,7 +273,7 @@ class DistanceVectorServer:
     def _recompute_routes(self) -> None:
         for destination in self.servers:
             if destination == self.local_id:
-                self.routes[destination] = Route(None, 0)
+                self.routes[destination] = Route(self.local_id, 0)
                 continue
             best_cost, best_hop = INFINITY, None
             for neighbor, link_cost in self.neighbor_costs.items():
@@ -307,9 +321,11 @@ class DistanceVectorServer:
                 with self.lock:
                     self.neighbor_costs[neighbor] = new_cost
                     if math.isinf(new_cost):
+                        self.disabled_neighbors.add(neighbor)
                         self.neighbor_vectors.pop(neighbor, None)
                         self.last_received.pop(neighbor, None)
                     else:
+                        self.disabled_neighbors.discard(neighbor)
                         self.last_received[neighbor] = time.monotonic()
                     self._recompute_routes()
                 self.log(f"{' '.join(parts)} SUCCESS")
@@ -319,6 +335,7 @@ class DistanceVectorServer:
                     raise ValueError(f"server {neighbor} is not a neighbor")
                 with self.lock:
                     self.neighbor_costs[neighbor] = INFINITY
+                    self.disabled_neighbors.add(neighbor)
                     self.neighbor_vectors.pop(neighbor, None)
                     self.last_received.pop(neighbor, None)
                     self._recompute_routes()
@@ -359,3 +376,6 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+

@@ -13,6 +13,7 @@ Python implementation of the distance-vector routing assignment. The assignment 
 - `topology.example.txt` — topology format example for server 1.
 - `topology-1.txt` through `topology-4.txt` — ready-to-run loopback topologies for four servers.
 - `project2.pdf` — assignment specification.
+- `report.md` — implementation summary for the rubric.
 
 ## Topology file format
 
@@ -47,3 +48,4 @@ If needed, replace `python` with the full path to your Python executable. Each s
 For a different network, create one topology file per server, changing the neighbor count and link entries to match that server's links. Configure each server's reachable IP address and a unique UDP port in every file.
 
 Interactive commands supported by `dv.py`: `update <id1> <id2> <cost|inf>`, `step`, `packets`, `display`, `disable <server-ID>`, and `crash`.
+
