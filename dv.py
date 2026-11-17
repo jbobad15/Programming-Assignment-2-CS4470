@@ -296,11 +296,13 @@ class DistanceVectorServer:
         try:
             if command == "display" and len(parts) == 1:
                 with self.lock:
+                    self.log(f"{'DESTINATION ID':<15} {'NEXT HOP ID':<12} PATH COST")
+                    self.log(f"{'-' * 14:<15} {'-' * 11:<12} {'-' * 9}")
                     for sid in sorted(self.routes):
                         route = self.routes[sid]
                         hop = "-" if route.next_hop is None else str(route.next_hop)
                         cost = "inf" if math.isinf(route.cost) else str(int(route.cost))
-                        self.log(f"{sid} {hop} {cost}")
+                        self.log(f"{sid:<15} {hop:<12} {cost}")
                 self.log("display SUCCESS")
             elif command == "packets" and len(parts) == 1:
                 with self.lock:
@@ -376,6 +378,7 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
 
 

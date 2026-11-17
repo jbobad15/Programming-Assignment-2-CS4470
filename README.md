@@ -47,5 +47,6 @@ If needed, replace `python` with the full path to your Python executable. Each s
 
 For a different network, create one topology file per server, changing the neighbor count and link entries to match that server's links. Configure each server's reachable IP address and a unique UDP port in every file.
 
-Interactive commands supported by `dv.py`: `update <id1> <id2> <cost|inf>`, `step`, `packets`, `display`, `disable <server-ID>`, and `crash`.
+`display` prints columns for destination ID, next-hop ID, and path cost; unreachable destinations show `inf`. Interactive commands supported by `dv.py`: `update <id1> <id2> <cost|inf>`, `step`, `packets`, `display`, `disable <server-ID>`, and `crash`.
+
 
